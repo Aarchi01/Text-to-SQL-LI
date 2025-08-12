@@ -1,0 +1,43 @@
+[
+  {
+    "question": "List all tasks along with the names of the users assigned to them in order.",
+    "expected_sql": "SELECT t.task_name, u.name FROM tasks t JOIN users u ON t.assigned_to = u.user_id ORDER BY u.name;"
+  },
+  {
+    "question": "Show all projects and the total number of tasks assigned to each project.",
+    "expected_sql": "SELECT p.project_name, COUNT(t.task_id) AS total_tasks FROM projects p LEFT JOIN tasks t ON p.project_id = t.project_id GROUP BY p.project_name;"
+  },
+  {
+    "question": "What are the names of all the departments?",
+    "expected_sql": "SELECT dept_name FROM departments;"
+  },
+
+  {
+    "question": "Find users assigned to the project with the most tasks.",
+    "expected_sql": "SELECT DISTINCT u.name FROM users u JOIN tasks t ON u.user_id = t.assigned_to WHERE t.project_id = (SELECT project_id FROM tasks GROUP BY project_id ORDER BY COUNT(*) DESC LIMIT 1);"
+  },
+  {
+    "question": "What is the total budget allocated for each project?",
+    "expected_sql": "SELECT p.project_name, SUM(pb.allocated_budget) as total_budget FROM projects p LEFT JOIN project_budgets pb ON p.project_id = pb.project_id GROUP BY p.project_id, p.project_name ORDER BY total_budget DESC;"
+  },
+  {
+    "question": "How many hours has each user logged in total?",
+    "expected_sql": "SELECT u.name, SUM(tl.hours_worked) as total_hours FROM users u JOIN time_logs tl ON u.user_id = tl.user_id GROUP BY u.user_id, u.name ORDER BY total_hours DESC;"
+  },
+  {
+    "question": "List users who have no tasks assigned.",
+    "expected_sql": "SELECT name FROM users WHERE user_id NOT IN (SELECT DISTINCT assigned_to FROM tasks);"
+  },
+  {
+    "question": "Find users who havent logged any time this month.",
+    "expected_sql": "SELECT users.name, users.email, users.role FROM users LEFT JOIN time_logs ON users.user_id = time_logs.user_id AND time_logs.log_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') WHERE time_logs.user_id is NULL;"
+  },
+  {
+    "question": "Show projects and the percentage of completed tasks using a CTE.",
+    "expected_sql": "WITH task_summary AS (SELECT project_id, COUNT(*) AS total_tasks, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks FROM tasks GROUP BY project_id) SELECT p.project_name, ts.total_tasks, ts.completed_tasks, ROUND((ts.completed_tasks / ts.total_tasks) * 100, 2) AS completion_percentage FROM projects p JOIN task_summary ts ON p.project_id = ts.project_id;"
+  },
+  {
+    "question": "List users who have overdue tasks and the count of those tasks.",
+    "expected_sql": "WITH overdue_tasks AS (SELECT assigned_to, COUNT(*) AS overdue_count FROM tasks WHERE due_date < CURDATE() AND status != 'completed' GROUP BY assigned_to) SELECT u.name, ot.overdue_count FROM users u JOIN overdue_tasks ot ON u.user_id = ot.assigned_to;"
+  }
+]

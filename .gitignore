@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# virtual envs
+venv/
+env/
+ENV/
+.VENV/
+
+# Editor
+.vscode/
+.idea/
+
+# environment files
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+

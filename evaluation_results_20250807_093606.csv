@@ -1,0 +1,74 @@
+Question,Expected SQL,Predicted SQL,Exec Match,Latency (s)
+List all tasks along with the names of the users assigned to them in order.,"SELECT t.task_name, u.name FROM tasks t JOIN users u ON t.assigned_to = u.user_id ORDER BY u.name;","SELECT tasks.task_name, users.name AS assigned_to
+FROM tasks
+JOIN users ON tasks.assigned_to = users.user_id
+ORDER BY tasks.task_id;",True,13.294
+Show all projects and the total number of tasks assigned to each project.,"SELECT p.project_name, COUNT(t.task_id) AS total_tasks FROM projects p LEFT JOIN tasks t ON p.project_id = t.project_id GROUP BY p.project_name;","WITH task_counts AS (
+    SELECT p.project_id, p.project_name, COUNT(t.task_id) AS total_tasks
+    FROM projects p
+    LEFT JOIN tasks t ON p.project_id = t.project_id
+    GROUP BY p.project_id, p.project_name
+)
+SELECT project_name, total_tasks
+FROM task_counts;",True,7.336
+What are the names of all the departments?,SELECT dept_name FROM departments;,SELECT dept_name FROM departments;,True,4.066
+Find users assigned to the project with the most tasks.,SELECT DISTINCT u.name FROM users u JOIN tasks t ON u.user_id = t.assigned_to WHERE t.project_id = (SELECT project_id FROM tasks GROUP BY project_id ORDER BY COUNT(*) DESC LIMIT 1);,"WITH project_task_counts AS (
+    SELECT project_id, COUNT(task_id) AS task_count
+    FROM tasks
+    GROUP BY project_id
+    ORDER BY task_count DESC
+    LIMIT 1
+)
+SELECT u.name
+FROM users u
+JOIN tasks t ON u.user_id = t.assigned_to
+JOIN project_task_counts ptc ON t.project_id = ptc.project_id;",True,6.186
+What is the total budget allocated for each project?,"SELECT p.project_name, SUM(pb.allocated_budget) as total_budget FROM projects p LEFT JOIN project_budgets pb ON p.project_id = pb.project_id GROUP BY p.project_id, p.project_name ORDER BY total_budget DESC;","WITH project_budget_totals AS (
+    SELECT project_id, SUM(allocated_budget) AS total_allocated_budget
+    FROM project_budgets
+    GROUP BY project_id
+)
+SELECT projects.project_name, project_budget_totals.total_allocated_budget
+FROM projects
+LEFT JOIN project_budget_totals ON projects.project_id = project_budget_totals.project_id;",True,7.26
+How many hours has each user logged in total?,"SELECT u.name, SUM(tl.hours_worked) as total_hours FROM users u JOIN time_logs tl ON u.user_id = tl.user_id GROUP BY u.user_id, u.name ORDER BY total_hours DESC;","SELECT u.name, SUM(tl.hours_worked) AS total_hours_logged
+FROM users u
+JOIN time_logs tl ON u.user_id = tl.user_id
+GROUP BY u.user_id, u.name
+ORDER BY total_hours_logged DESC;",True,6.009
+List users who have no tasks assigned.,SELECT name FROM users WHERE user_id NOT IN (SELECT DISTINCT assigned_to FROM tasks);,"SELECT users.name 
+FROM users 
+LEFT JOIN tasks ON users.user_id = tasks.assigned_to 
+WHERE tasks.task_id IS NULL;",True,5.591
+Find users who havent logged any time this month.,"SELECT users.name, users.email, users.role FROM users LEFT JOIN time_logs ON users.user_id = time_logs.user_id AND time_logs.log_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01') WHERE time_logs.user_id is NULL;","WITH current_month_users AS (
+    SELECT u.user_id, u.name
+    FROM users u
+    LEFT JOIN time_logs tl ON u.user_id = tl.user_id
+    WHERE tl.log_date >= DATE_FORMAT(NOW(), '%Y-%m-01') -- Start of current month
+    AND tl.log_date < DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-01'), INTERVAL 1 MONTH) -- End of current month
+    GROUP BY u.user_id, u.name
+    HAVING COUNT(tl.log_id) = 0
+)
+SELECT * FROM current_month_users;",False,7.014
+Show projects and the percentage of completed tasks using a CTE.,"WITH task_summary AS (SELECT project_id, COUNT(*) AS total_tasks, SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks FROM tasks GROUP BY project_id) SELECT p.project_name, ts.total_tasks, ts.completed_tasks, ROUND((ts.completed_tasks / ts.total_tasks) * 100, 2) AS completion_percentage FROM projects p JOIN task_summary ts ON p.project_id = ts.project_id;","WITH task_counts AS (
+    SELECT p.project_id, p.project_name, COUNT(t.task_id) AS total_tasks, SUM(t.status = 'completed') AS completed_tasks
+    FROM projects p
+    LEFT JOIN tasks t ON p.project_id = t.project_id
+    GROUP BY p.project_id, p.project_name
+)
+SELECT project_name, total_tasks, completed_tasks, 
+    CASE 
+        WHEN total_tasks = 0 THEN 0 
+        ELSE ROUND(completed_tasks / total_tasks * 100, 2) 
+    END AS completion_rate_pct
+FROM task_counts
+ORDER BY completion_rate_pct DESC;",True,11.27
+List users who have overdue tasks and the count of those tasks.,"WITH overdue_tasks AS (SELECT assigned_to, COUNT(*) AS overdue_count FROM tasks WHERE due_date < CURDATE() AND status != 'completed' GROUP BY assigned_to) SELECT u.name, ot.overdue_count FROM users u JOIN overdue_tasks ot ON u.user_id = ot.assigned_to;","WITH overdue_tasks_count AS (
+    SELECT u.name, COUNT(t.task_id) AS overdue_task_count
+    FROM users u
+    JOIN tasks t ON u.user_id = t.assigned_to
+    WHERE t.due_date < NOW() AND t.status != 'completed'
+    GROUP BY u.name
+)
+SELECT name, overdue_task_count
+FROM overdue_tasks_count;",True,6.162

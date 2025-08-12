@@ -1,0 +1,62 @@
+[
+  {
+    "question": "Show all completed tasks for a given project.",
+    "sql": "SELECT * FROM tasks JOIN projects ON tasks.project_id = projects.project_id WHERE tasks.status = 'completed' AND projects.project_name = 'Website redesign';"
+  },
+  {
+    "question": "Which users have overdue tasks?",
+    "sql": "SELECT users.name FROM users JOIN tasks ON users.user_id = tasks.assigned_to WHERE tasks.due_date < NOW() AND tasks.status != 'completed';"
+  },
+  {
+    "question": "How many testers are there in the company?",
+    "sql": "SELECT COUNT(*) AS tester_count FROM users WHERE role = 'tester';"
+  },
+  {
+    "question": "Show the number of tasks assigned to each user.",
+    "sql": "SELECT users.name, COUNT(tasks.task_id) AS task_count FROM users LEFT JOIN tasks ON users.user_id = tasks.assigned_to GROUP BY users.name;"
+  },
+  {
+    "question": "List all unique roles of users in the company.",
+    "sql": "SELECT DISTINCT role FROM users;"
+  },
+  {
+    "question": "How many tasks are assigned to each user?",
+    "sql": "SELECT u.name, COUNT(t.task_id) as task_count FROM users u LEFT JOIN tasks t ON u.user_id = t.assigned_to GROUP BY u.user_id, u.name ORDER BY task_count DESC;"
+  },
+  {
+    "question": "Which tasks are assigned to Aarchi Gandhi and are overdue?",
+    "sql": "SELECT tasks.task_name FROM tasks JOIN users ON tasks.assigned_to = users.user_id WHERE users.name = 'Aesha Nirnay' AND tasks.due_date < NOW() AND tasks.status != 'Incompleted';"
+  },
+  {
+    "question": "List users who does not have any tasks assigned.",
+    "sql": "SELECT users.name FROM users LEFT JOIN tasks ON users.user_id = tasks.assigned_to WHERE tasks.task_id IS NULL;"
+  },
+  {
+    "question": "Which department has the highest budget?",
+    "sql": "SELECT dept_name, budget FROM departments ORDER BY budget DESC LIMIT 1;"
+  },
+  {
+    "question": "Which users are assigned to tasks in more than one project?",
+    "sql": "SELECT users.name FROM users JOIN tasks ON users.user_id = tasks.assigned_to GROUP BY users.name HAVING COUNT(DISTINCT tasks.project_id) > 1;"
+  },
+  {
+    "question": "Show all overdue tasks with assignee details.",
+    "sql": "SELECT t.task_name, t.due_date, u.name as assigned_to, u.email, d.dept_name FROM tasks t JOIN users u ON t.assigned_to = u.user_id JOIN departments d ON u.dept_id = d.dept_id WHERE t.due_date < CURDATE() AND t.status != 'Completed';"
+  },
+  {
+    "question": "Which project has the most billablehours?",
+    "sql": "SELECT p.project_name, SUM(tl.hours_worked) as billable_hours FROM projects p JOIN tasks t ON p.project_id = t.project_id JOIN time_logs tl ON t.task_id = tl.task_id WHERE tl.billable = TRUE GROUP BY p.project_id, p.project_name ORDER BY billable_hours DESC LIMIT 1;"
+  },
+  {
+    "question": "Calculate the project ROI based on budget vs estimated labor cost.",
+    "sql": "SELECT p.project_name, SUM(pb.allocated_budget) as budget, SUM(tl.hours_worked * 75) as estimated_labor_cost, SUM(pb.allocated_budget) - SUM(tl.hours_worked * 75) as estimated_profit, ROUND((SUM(pb.allocated_budget) - SUM(tl.hours_worked * 75)) * 100.0 / SUM(tl.hours_worked * 75), 2) as roi_percentage FROM projects p LEFT JOIN project_budgets pb ON p.project_id = pb.project_id LEFT JOIN taskst ON p.project_id = t.project_id LEFT JOIN time_logs tl ON t.task_id = tl.task_id GROUP BY p.project_id, p.project_name HAVING SUM(tl.hours_worked) > 0 ORDER BY roi_percentage DESC;"
+  },
+  {
+    "question": "Show the completion rate (in %) of each project.",
+    "sql": "WITH task_counts AS (SELECT p.project_id, p.project_name, COUNT(t.task_id) AS total_tasks, SUM(t.status = 'completed') AS completed_tasks FROM projects p LEFT JOIN tasks t ON p.project_id = t.project_id GROUP BY p.project_id, p.project_name) SELECT project_name, total_tasks, completed_tasks, CASE WHEN total_tasks = 0 THEN 0 ELSE ROUND(completed_tasks / total_tasks * 100, 2) END AS completion_rate_pct FROM task_counts ORDER BY completion_rate_pct DESC;"
+  },
+  {
+    "question": "Show projects with their total budget, spent amount, and remaining budget.",
+    "sql": "WITH project_financials AS (SELECT project_id, SUM(allocated_budget) as total_budget, SUM(spent_amount) as total_spent FROM project_budgets GROUP BY project_id) SELECT p.project_name, pf.total_budget, pf.total_spent, pf.total_budget - pf.total_spent as remaining_budget FROM peojects p LEFT JOIN project_financials pf ON p.project_id = pf.project_id ORDER BY remaining_budget DESC;"
+  }
+]
